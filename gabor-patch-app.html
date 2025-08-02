@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>視力回復ガボールパッチアプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background-color: #808080;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background-color: #808080;
+            transition: background-color 0.5s;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        #gameArea {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            cursor: pointer;
+        }
+
+        .gabor-patch {
+            position: absolute;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            pointer-events: auto;
+        }
+
+        .gabor-patch.blinking {
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .hit-marker {
+            position: absolute;
+            font-size: 40px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: fadeOut 0.5s forwards;
+        }
+
+        .hit-marker.success {
+            color: #00ff00;
+        }
+
+        .hit-marker.miss {
+            color: #ff0000;
+        }
+
+        @keyframes fadeOut {
+            0% { 
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(1.5) translateY(-20px);
+                opacity: 0;
+            }
+        }
+
+        #startScreen, #endScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            z-index: 2000;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .score-display {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+
+        .instructions {
+            text-align: center;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div>ステージ: <span id="stage">1</span> / 10</div>
+            <div>時間: <span id="timer">60</span>秒</div>
+            <div>スコア: <span id="score">0</span>点</div>
+        </div>
+
+        <div id="gameArea"></div>
+
+        <div id="startScreen">
+            <h1>視力回復ガボールパッチアプリ</h1>
+            <div class="instructions">
+                <p>ガボールパッチを見つけてタッチしてください</p>
+                <p>背景をタッチすると1点減点されます</p>
+                <p>ステージが進むごとに難しくなります</p>
+            </div>
+            <button onclick="startGame()">ゲーム開始</button>
+        </div>
+
+        <div id="endScreen" style="display: none;">
+            <h1>ゲーム終了</h1>
+            <div class="score-display">最終スコア: <span id="finalScore">0</span> / 100点</div>
+            <button onclick="resetGame()">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        let stage = 1;
+        let score = 0;
+        let timeLeft = 60;
+        let timer = null;
+        let patches = [];
+        let clearedPatches = 0;
+        let perfectClear = false;
+        let baseContrast = 0.08; // さらに薄く設定
+        let currentBackgroundColor = 128;
+        let basePatchSize = { min: 60, max: 100 };
+
+        // ガボールパッチのタイプ
+        const PATCH_TYPES = {
+            STANDARD: 'standard',
+            THREE_LINES: 'three_lines',
+            RADIAL: 'radial',
+            CIRCULAR: 'circular',
+            CROSS: 'cross'
+        };
+
+        function setBackgroundColor() {
+            // ステージごとにランダムな背景色（グレーの範囲内）
+            currentBackgroundColor = Math.floor(Math.random() * 60) + 98; // 98-158の範囲
+            const rgb = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
+            document.getElementById('gameContainer').style.backgroundColor = rgb;
+        }
+
+        function calculatePatchSize() {
+            // 10点ごとにサイズを縮小
+            const sizeReduction = Math.floor(score / 10) * 5;
+            return {
+                min: Math.max(30, basePatchSize.min - sizeReduction),
+                max: Math.max(50, basePatchSize.max - sizeReduction)
+            };
+        }
+
+        function createGaborPatch(id, x, y, size, contrast, type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            canvas.className = 'gabor-patch';
+            canvas.dataset.id = id;
+            canvas.style.left = x + 'px';
+            canvas.style.top = y + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            const center = size / 2;
+            const sigma = size / 6;
+            
+            // より薄いコントラストに調整
+            const adjustedContrast = contrast * 0.6;
+            
+            switch(type) {
+                case PATCH_TYPES.THREE_LINES:
+                    drawThreeLines(ctx, size, center, sigma, adjustedContrast);
+                    break;
+                case PATCH_TYPES.RADIAL:
+                    drawRadialPattern(ctx, size, center, sigma, adjustedContrast);
+                    break;
+                case PATCH_TYPES.CIRCULAR:
+                    drawCircularPattern(ctx, size, center, sigma, adjustedContrast);
+                    break;
+                case PATCH_TYPES.CROSS:
+                    drawCrossPattern(ctx, size, center, sigma, adjustedContrast);
+                    break;
+                default:
+                    drawStandardGabor(ctx, size, center, sigma, adjustedContrast);
+            }
+            
+            // タッチデバイスの場合はtouchstartのみ、それ以外はclickのみを使用
+            const isTouchDevice = 'ontouchstart' in window;
+            if (isTouchDevice) {
+                canvas.addEventListener('touchstart', handlePatchClick, { passive: false });
+            } else {
+                canvas.addEventListener('click', handlePatchClick);
+            }
+            
+            return canvas;
+        }
+
+        function drawStandardGabor(ctx, size, center, sigma, contrast) {
+            const frequency = 0.1;
+            const theta = Math.random() * Math.PI;
+            
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const x = i - center;
+                    const y = j - center;
+                    
+                    const gaussian = Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
+                    
+                    // より厳密なしきい値で背景との境界を自然に
+                    if (gaussian < 0.05) {
+                        ctx.fillStyle = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
+                        ctx.fillRect(i, j, 1, 1);
+                        continue;
+                    }
+                    
+                    const xPrime = x * Math.cos(theta) + y * Math.sin(theta);
+                    const sinusoid = Math.cos(2 * Math.PI * frequency * xPrime);
+                    const value = gaussian * sinusoid * contrast;
+                    const gray = Math.round(currentBackgroundColor + value * 127);
+                    
+                    ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    ctx.fillRect(i, j, 1, 1);
+                }
+            }
+        }
+
+        function drawThreeLines(ctx, size, center, sigma, contrast) {
+            const lineWidth = size / 10;
+            const spacing = size / 4;
+            const theta = Math.random() * Math.PI;
+            
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const x = i - center;
+                    const y = j - center;
+                    
+                    const gaussian = Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
+                    
+                    if (gaussian < 0.05) {
+                        ctx.fillStyle = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
+                        ctx.fillRect(i, j, 1, 1);
+                        continue;
+                    }
+                    
+                    const xRot = x * Math.cos(theta) + y * Math.sin(theta);
+                    
+                    let value = 0;
+                    for (let line = -1; line <= 1; line++) {
+                        const lineCenter = line * spacing;
+                        if (Math.abs(xRot - lineCenter) < lineWidth / 2) {
+                            value = 1;
+                        }
+                    }
+                    
+                    value = gaussian * value * contrast;
+                    const gray = Math.round(currentBackgroundColor + value * 127);
+                    
+                    ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    ctx.fillRect(i, j, 1, 1);
+                }
+            }
+        }
+
+        function drawRadialPattern(ctx, size, center, sigma, contrast) {
+            const numSpokes = 8;
+            
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const x = i - center;
+                    const y = j - center;
+                    
+                    const gaussian = Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
+                    
+                    if (gaussian < 0.05) {
+                        ctx.fillStyle = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
+                        ctx.fillRect(i, j, 1, 1);
+                        continue;
+                    }
+                    
+                    const angle = Math.atan2(y, x);
+                    const spoke = Math.sin(angle * numSpokes);
+                    const value = gaussian * spoke * contrast;
+                    const gray = Math.round(currentBackgroundColor + value * 127);
+                    
+                    ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    ctx.fillRect(i, j, 1, 1);
+                }
+            }
+        }
+
+        function drawCircularPattern(ctx, size, center, sigma, contrast) {
+            const frequency = 0.15;
+            
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const x = i - center;
+                    const y = j - center;
+                    const r = Math.sqrt(x * x + y * y);
+                    
+                    const gaussian = Math.exp(-(r * r) / (2 * sigma * sigma));
+                    
+                    if (gaussian < 0.05) {
+                        ctx.fillStyle = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
+                        ctx.fillRect(i, j, 1, 1);
+                        continue;
+                    }
+                    
+                    const circular = Math.cos(2 * Math.PI * frequency * r);
+                    const value = gaussian * circular * contrast;
+                    const gray = Math.round(currentBackgroundColor + value * 127);
+                    
+                    ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    ctx.fillRect(i, j, 1, 1);
+                }
+            }
+        }
+
+        function drawCrossPattern(ctx, size, center, sigma, contrast) {
+            const lineWidth = size / 8;
+            
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const x = i - center;
+                    const y = j - center;
+                    
+                    const gaussian = Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
+                    
+                    if (gaussian < 0.05) {
+                        ctx.fillStyle = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
+                        ctx.fillRect(i, j, 1, 1);
+                        continue;
+                    }
+                    
+                    const inCross = (Math.abs(x) < lineWidth / 2) || (Math.abs(y) < lineWidth / 2);
+                    const value = gaussian * (inCross ? 1 : 0) * contrast;
+                    const gray = Math.round(currentBackgroundColor + value * 127);
+                    
+                    ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    ctx.fillRect(i, j, 1, 1);
+                }
+            }
+        }
+
+        let lastTouchTime = 0;
+        
+        function handlePatchClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // タッチイベントの重複を防ぐ
+            const currentTime = Date.now();
+            if (currentTime - lastTouchTime < 100) return;
+            lastTouchTime = currentTime;
+            
+            const patch = e.target;
+            const rect = patch.getBoundingClientRect();
+            
+            // ○マークを表示
+            const marker = document.createElement('div');
+            marker.className = 'hit-marker success';
+            marker.textContent = '○';
+            marker.style.left = (rect.left + rect.width / 2 - 20) + 'px';
+            marker.style.top = (rect.top + rect.height / 2 - 20) + 'px';
+            document.getElementById('gameContainer').appendChild(marker);
+            
+            // パッチを削除
+            patch.remove();
+            clearedPatches++;
+            score++; // 1点加算
+            updateScore();
+            
+            // マーカーをアニメーション後に削除
+            setTimeout(() => marker.remove(), 500);
+            
+            // 待機中のパッチがあれば配置を試みる
+            if (pendingPatches.length > 0) {
+                setTimeout(() => tryPlacePendingPatches(), 100);
+            }
+            
+            // 全てクリアしたかチェック
+            if (clearedPatches === 10) {
+                perfectClear = true;
+                nextStage();
+            }
+        }
+
+        function handleBackgroundClick(e) {
+            if (e.target.classList.contains('gabor-patch')) return;
+            
+            // タッチイベントの重複を防ぐ
+            const currentTime = Date.now();
+            if (currentTime - lastTouchTime < 100) return;
+            lastTouchTime = currentTime;
+            
+            // ×マークを表示
+            const marker = document.createElement('div');
+            marker.className = 'hit-marker miss';
+            marker.textContent = '×';
+            marker.style.left = (e.clientX - 20) + 'px';
+            marker.style.top = (e.clientY - 20) + 'px';
+            document.getElementById('gameContainer').appendChild(marker);
+            
+            // 1点減点
+            score = Math.max(0, score - 1);
+            updateScore();
+            
+            // マーカーをアニメーション後に削除
+            setTimeout(() => marker.remove(), 500);
+        }
+
+        let pendingPatches = []; // 配置待ちのパッチ情報
+        
+        function generatePatches() {
+            const gameArea = document.getElementById('gameArea');
+            const types = Object.values(PATCH_TYPES);
+            const sizeRange = calculatePatchSize();
+            const placedPatches = []; // 配置済みパッチの位置を記録
+            pendingPatches = []; // 配置待ちパッチをリセット
+            
+            for (let i = 0; i < 10; i++) {
+                const size = Math.random() * (sizeRange.max - sizeRange.min) + sizeRange.min;
+                const contrast = baseContrast * (Math.random() * 0.3 + 0.7);
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                // 重ならない位置を探す
+                let x, y;
+                let attempts = 0;
+                const maxAttempts = 50;
+                let placed = false;
+                
+                do {
+                    x = Math.random() * (window.innerWidth - size);
+                    y = Math.random() * (window.innerHeight - size - 120) + 60;
+                    attempts++;
+                    
+                    if (!isOverlapping(x, y, size, placedPatches)) {
+                        placed = true;
+                        break;
+                    }
+                } while (attempts < maxAttempts);
+                
+                if (placed) {
+                    // 配置可能な場合は即座に配置
+                    placedPatches.push({ x, y, size });
+                    const patch = createGaborPatch(i, x, y, size, contrast, type);
+                    gameArea.appendChild(patch);
+                    patches.push(patch);
+                } else {
+                    // 配置できない場合は待機リストに追加
+                    pendingPatches.push({ id: i, size, contrast, type });
+                }
+            }
+        }
+        
+        function tryPlacePendingPatches() {
+            if (pendingPatches.length === 0) return;
+            
+            const gameArea = document.getElementById('gameArea');
+            const placedPatches = [];
+            
+            // 現在配置されているパッチの位置を取得
+            document.querySelectorAll('.gabor-patch').forEach(patch => {
+                const rect = patch.getBoundingClientRect();
+                placedPatches.push({
+                    x: rect.left,
+                    y: rect.top,
+                    size: rect.width
+                });
+            });
+            
+            // 待機中のパッチを配置試行
+            const stillPending = [];
+            
+            for (const pending of pendingPatches) {
+                let x, y;
+                let attempts = 0;
+                const maxAttempts = 50;
+                let placed = false;
+                
+                do {
+                    x = Math.random() * (window.innerWidth - pending.size);
+                    y = Math.random() * (window.innerHeight - pending.size - 120) + 60;
+                    attempts++;
+                    
+                    if (!isOverlapping(x, y, pending.size, placedPatches)) {
+                        placed = true;
+                        break;
+                    }
+                } while (attempts < maxAttempts);
+                
+                if (placed) {
+                    placedPatches.push({ x, y, size: pending.size });
+                    const patch = createGaborPatch(pending.id, x, y, pending.size, pending.contrast, pending.type);
+                    gameArea.appendChild(patch);
+                    patches.push(patch);
+                    
+                    // 点滅中の場合は新しいパッチにも点滅を適用
+                    if (timeLeft <= 10) {
+                        patch.classList.add('blinking');
+                    }
+                } else {
+                    stillPending.push(pending);
+                }
+            }
+            
+            pendingPatches = stillPending;
+        }
+        
+        function isOverlapping(x, y, size, placedPatches) {
+            const margin = 10; // パッチ間の最小マージン
+            
+            for (const placed of placedPatches) {
+                const dx = x - placed.x;
+                const dy = y - placed.y;
+                const minDistance = (size + placed.size) / 2 + margin;
+                
+                // 矩形の重なりをチェック
+                if (Math.abs(dx) < size / 2 + placed.size / 2 + margin &&
+                    Math.abs(dy) < size / 2 + placed.size / 2 + margin) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        function clearPatches() {
+            patches.forEach(patch => {
+                if (patch.parentNode) {
+                    patch.remove();
+                }
+            });
+            patches = [];
+        }
+
+        function startTimer() {
+            timeLeft = 60;
+            updateTimer();
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                
+                // 残り10秒（50秒経過）で点滅開始
+                if (timeLeft === 10) {
+                    document.querySelectorAll('.gabor-patch').forEach(patch => {
+                        patch.classList.add('blinking');
+                    });
+                }
+                
+                if (timeLeft === 0) {
+                    // タイムアップ時に残っているパッチに×を表示
+                    document.querySelectorAll('.gabor-patch').forEach(patch => {
+                        const rect = patch.getBoundingClientRect();
+                        const marker = document.createElement('div');
+                        marker.className = 'hit-marker miss';
+                        marker.textContent = '×';
+                        marker.style.left = (rect.left + rect.width / 2 - 20) + 'px';
+                        marker.style.top = (rect.top + rect.height / 2 - 20) + 'px';
+                        document.getElementById('gameContainer').appendChild(marker);
+                        
+                        // マーカーは1秒後に削除
+                        setTimeout(() => marker.remove(), 1000);
+                    });
+                    
+                    // 1秒待ってから次のステージへ
+                    setTimeout(() => {
+                        nextStage();
+                    }, 1000);
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        function updateTimer() {
+            document.getElementById('timer').textContent = timeLeft;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        function updateStage() {
+            document.getElementById('stage').textContent = stage;
+        }
+
+        function nextStage() {
+            stopTimer();
+            clearPatches();
+            
+            // 完全クリアした場合、次のステージでコントラストを下げる
+            if (perfectClear) {
+                baseContrast *= 0.9;
+            }
+            
+            clearedPatches = 0;
+            perfectClear = false;
+            
+            if (stage < 10) {
+                stage++;
+                updateStage();
+                setBackgroundColor(); // 新しいステージで背景色を変更
+                generatePatches();
+                startTimer();
+            } else {
+                endGame();
+            }
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            
+            // タッチデバイスの場合はtouchstartのみ、それ以外はclickのみを使用
+            const isTouchDevice = 'ontouchstart' in window;
+            if (isTouchDevice) {
+                document.getElementById('gameArea').addEventListener('touchstart', handleBackgroundClick, { passive: false });
+            } else {
+                document.getElementById('gameArea').addEventListener('click', handleBackgroundClick);
+            }
+            
+            stage = 1;
+            score = 0;
+            clearedPatches = 0;
+            perfectClear = false;
+            baseContrast = 0.08;
+            updateStage();
+            updateScore();
+            setBackgroundColor();
+            generatePatches();
+            startTimer();
+        }
+
+        function endGame() {
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('endScreen').style.display = 'flex';
+        }
+
+        function resetGame() {
+            document.getElementById('endScreen').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+            clearPatches();
+            stopTimer();
+            // 背景色を元に戻す
+            document.getElementById('gameContainer').style.backgroundColor = '#808080';
+        }
+    </script>
+</body>
+</html>
