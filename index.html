@@ -2,36 +2,202 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>視力回復ガボールパッチアプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- PWA設定 -->
+    <meta name="application-name" content="ガボールパッチ視力回復">
+    <meta name="apple-mobile-web-app-title" content="ガボールパッチ">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- アイコン設定 -->
+    <link rel="icon" href="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png">
+    <link rel="apple-touch-icon" href="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png">
+    
+    <!-- テーマカラー -->
+    <meta name="theme-color" content="#4CAF50">
+    
+    <title>ガボールパッチ視力回復トレーニング</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-            background-color: #808080;
-            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
             user-select: none;
         }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
+            background-color: #808080;
+        }
+
+        /* スプラッシュスクリーン */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .splash-screen.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 20px;
+        }
+
+        .splash-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .splash-subtitle {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
+
+        .splash-copyright {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        /* メインコンテナ */
         #gameContainer {
             width: 100vw;
             height: 100vh;
             position: relative;
             background-color: #808080;
             transition: background-color 0.5s;
+            overflow: hidden;
         }
 
+        /* ヘッダー（ロゴと説明） */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            z-index: 3000;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header.hide {
+            transform: translateY(-100%);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .header-logo {
+            height: 40px;
+            width: auto;
+            background: white;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .header-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-description {
+            font-size: 0.75rem;
+            color: #ccc;
+            text-align: center;
+            line-height: 1.4;
+            max-width: 90%;
+            margin: 0 auto;
+        }
+
+        /* メニューボタン */
+        .menu-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-size: 20px;
+        }
+
+        /* UI */
         #ui {
             position: absolute;
             top: 10px;
             left: 10px;
-            right: 10px;
+            right: 60px;
             z-index: 1000;
             display: flex;
             justify-content: space-between;
@@ -40,22 +206,27 @@
             color: white;
             padding: 10px 20px;
             border-radius: 10px;
+            font-size: 0.9rem;
         }
 
+        /* ゲームエリア */
         #gameArea {
             position: absolute;
-            top: 60px;
+            top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             cursor: pointer;
+            touch-action: none;
         }
 
+        /* ガボールパッチ */
         .gabor-patch {
             position: absolute;
             cursor: pointer;
             transition: opacity 0.3s;
             pointer-events: auto;
+            touch-action: none;
         }
 
         .gabor-patch.blinking {
@@ -67,12 +238,14 @@
             51%, 100% { opacity: 0.3; }
         }
 
+        /* ヒットマーカー */
         .hit-marker {
             position: absolute;
             font-size: 40px;
             font-weight: bold;
             pointer-events: none;
             animation: fadeOut 0.5s forwards;
+            z-index: 900;
         }
 
         .hit-marker.success {
@@ -94,6 +267,7 @@
             }
         }
 
+        /* スタート・エンド画面 */
         #startScreen, #endScreen {
             position: absolute;
             top: 0;
@@ -104,71 +278,221 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             color: white;
             z-index: 2000;
+            padding: 20px;
         }
 
-        button {
-            padding: 15px 30px;
-            font-size: 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
-        button:hover {
-            background-color: #45a049;
+        .game-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
         }
 
         h1 {
-            font-size: 36px;
+            font-size: 1.8rem;
             margin-bottom: 20px;
-        }
-
-        .score-display {
-            font-size: 24px;
-            margin: 10px 0;
+            text-align: center;
+            background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .instructions {
             text-align: center;
             margin: 20px 0;
+            line-height: 1.6;
+            max-width: 90%;
+        }
+
+        .instructions p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .scientific-explanation {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            max-width: 90%;
+            font-size: 0.85rem;
             line-height: 1.5;
+            text-align: left;
+        }
+
+        .scientific-explanation h3 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .score-display {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        /* フッター（著作権） */
+        .footer {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+            z-index: 100;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* フルスクリーン時の調整 */
+        @media screen and (max-width: 600px) {
+            .header-title {
+                font-size: 1rem;
+            }
+            
+            .header-description {
+                font-size: 0.7rem;
+            }
+            
+            #ui {
+                font-size: 0.8rem;
+                padding: 8px 15px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .instructions p {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* 横向き対応 */
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            .header {
+                padding: 5px;
+            }
+            
+            .header-logo {
+                height: 30px;
+            }
+            
+            .header-description {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- スプラッシュスクリーン -->
+    <div class="splash-screen" id="splashScreen">
+        <img src="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png" alt="Logo" class="splash-logo">
+        <div class="splash-title">Functional Neuro Training</div>
+        <div class="splash-subtitle">ガボールパッチ</div>
+        <div class="splash-copyright">© Functional Neuro Training</div>
+    </div>
+
     <div id="gameContainer">
+        <!-- メニューボタン -->
+        <button class="menu-toggle" id="menuToggle" onclick="toggleHeader()">☰</button>
+        
+        <!-- ヘッダー -->
+        <div class="header hide" id="header">
+            <div class="header-top">
+                <img src="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512-transparent.png" alt="FNT Logo" class="header-logo">
+                <h2 class="header-title">ガボールパッチ視力回復</h2>
+            </div>
+            <div class="header-description">
+                【神経科学的効果】ガボールパッチは視覚野のコントラスト感度を向上させ、
+                視力回復に効果的です。薄いパッチを見つける訓練により、
+                脳の視覚処理能力が改善されます。
+            </div>
+        </div>
+
+        <!-- UI -->
         <div id="ui">
             <div>ステージ: <span id="stage">1</span> / 10</div>
             <div>時間: <span id="timer">60</span>秒</div>
             <div>スコア: <span id="score">0</span>点</div>
         </div>
 
+        <!-- ゲームエリア -->
         <div id="gameArea"></div>
 
+        <!-- スタート画面 -->
         <div id="startScreen">
-            <h1>視力回復ガボールパッチアプリ</h1>
-            <div class="instructions">
-                <p>ガボールパッチを見つけてタッチしてください</p>
-                <p>背景をタッチすると1点減点されます</p>
-                <p>ステージが進むごとに難しくなります</p>
+            <img src="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png" alt="Logo" class="game-logo">
+            <h1>ガボールパッチ視力回復トレーニング</h1>
+            
+            <div class="scientific-explanation">
+                <h3>トレーニング方法と効果</h3>
+                <p>• 隠れたガボールパッチを探してタッチ</p>
+                <p>• コントラスト感度の向上により視力改善</p>
+                <p>• 視覚野の神経可塑性を活性化</p>
+                <p>• 毎日10分の訓練で効果的</p>
             </div>
-            <button onclick="startGame()">ゲーム開始</button>
+            
+            <div class="instructions">
+                <p>画面に隠れているガボールパッチを見つけてタッチしてください</p>
+                <p>背景をタッチすると1点減点されます</p>
+                <p>ステージが進むごとにパッチが薄く小さくなります</p>
+                <p>残り10秒になるとパッチが点滅します</p>
+            </div>
+            
+            <button onclick="startGame()">トレーニング開始</button>
         </div>
 
+        <!-- 終了画面 -->
         <div id="endScreen" style="display: none;">
-            <h1>ゲーム終了</h1>
-            <div class="score-display">最終スコア: <span id="finalScore">0</span> / 100点</div>
+            <img src="https://hokutomiyazaki-arch.github.io/gabor-patch/FNT512.png" alt="Logo" class="game-logo">
+            <h1>トレーニング終了</h1>
+            <div class="score-display">
+                <div>最終スコア</div>
+                <div style="font-size: 2.5rem; color: #4CAF50; margin-top: 10px;">
+                    <span id="finalScore">0</span> / 100点
+                </div>
+            </div>
+            <div class="instructions">
+                <p id="resultMessage"></p>
+            </div>
             <button onclick="resetGame()">もう一度プレイ</button>
         </div>
+
+        <!-- フッター -->
+        <div class="footer">© Functional Neuro Training - All Rights Reserved</div>
     </div>
 
     <script>
+        // ゲーム変数
         let stage = 1;
         let score = 0;
         let timeLeft = 60;
@@ -176,9 +500,11 @@
         let patches = [];
         let clearedPatches = 0;
         let perfectClear = false;
-        let baseContrast = 0.08; // さらに薄く設定
+        let baseContrast = 0.08;
         let currentBackgroundColor = 128;
         let basePatchSize = { min: 60, max: 100 };
+        let pendingPatches = [];
+        let lastTouchTime = 0;
 
         // ガボールパッチのタイプ
         const PATCH_TYPES = {
@@ -189,15 +515,33 @@
             CROSS: 'cross'
         };
 
+        // スプラッシュスクリーン制御
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('splashScreen').classList.add('hide');
+            }, 2000);
+            
+            // アドレスバーを隠す
+            setTimeout(() => {
+                window.scrollTo(0, 1);
+            }, 100);
+        });
+
+        // ヘッダーの表示/非表示
+        function toggleHeader() {
+            const header = document.getElementById('header');
+            header.classList.toggle('hide');
+        }
+
+        // 背景色設定
         function setBackgroundColor() {
-            // ステージごとにランダムな背景色（グレーの範囲内）
-            currentBackgroundColor = Math.floor(Math.random() * 60) + 98; // 98-158の範囲
+            currentBackgroundColor = Math.floor(Math.random() * 60) + 98;
             const rgb = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
             document.getElementById('gameContainer').style.backgroundColor = rgb;
         }
 
+        // パッチサイズ計算
         function calculatePatchSize() {
-            // 10点ごとにサイズを縮小
             const sizeReduction = Math.floor(score / 10) * 5;
             return {
                 min: Math.max(30, basePatchSize.min - sizeReduction),
@@ -205,6 +549,7 @@
             };
         }
 
+        // ガボールパッチ作成
         function createGaborPatch(id, x, y, size, contrast, type) {
             const canvas = document.createElement('canvas');
             canvas.width = size;
@@ -217,8 +562,6 @@
             const ctx = canvas.getContext('2d');
             const center = size / 2;
             const sigma = size / 6;
-            
-            // より薄いコントラストに調整
             const adjustedContrast = contrast * 0.6;
             
             switch(type) {
@@ -238,7 +581,7 @@
                     drawStandardGabor(ctx, size, center, sigma, adjustedContrast);
             }
             
-            // タッチデバイスの場合はtouchstartのみ、それ以外はclickのみを使用
+            // タッチ/クリックイベント
             const isTouchDevice = 'ontouchstart' in window;
             if (isTouchDevice) {
                 canvas.addEventListener('touchstart', handlePatchClick, { passive: false });
@@ -249,6 +592,7 @@
             return canvas;
         }
 
+        // 標準ガボールパッチ描画
         function drawStandardGabor(ctx, size, center, sigma, contrast) {
             const frequency = 0.1;
             const theta = Math.random() * Math.PI;
@@ -260,7 +604,6 @@
                     
                     const gaussian = Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
                     
-                    // より厳密なしきい値で背景との境界を自然に
                     if (gaussian < 0.05) {
                         ctx.fillStyle = `rgb(${currentBackgroundColor}, ${currentBackgroundColor}, ${currentBackgroundColor})`;
                         ctx.fillRect(i, j, 1, 1);
@@ -278,6 +621,7 @@
             }
         }
 
+        // 3本線パターン
         function drawThreeLines(ctx, size, center, sigma, contrast) {
             const lineWidth = size / 10;
             const spacing = size / 4;
@@ -315,6 +659,7 @@
             }
         }
 
+        // 放射状パターン
         function drawRadialPattern(ctx, size, center, sigma, contrast) {
             const numSpokes = 8;
             
@@ -342,6 +687,7 @@
             }
         }
 
+        // 円形パターン
         function drawCircularPattern(ctx, size, center, sigma, contrast) {
             const frequency = 0.15;
             
@@ -369,6 +715,7 @@
             }
         }
 
+        // クロスパターン
         function drawCrossPattern(ctx, size, center, sigma, contrast) {
             const lineWidth = size / 8;
             
@@ -395,13 +742,11 @@
             }
         }
 
-        let lastTouchTime = 0;
-        
+        // パッチクリック処理
         function handlePatchClick(e) {
             e.preventDefault();
             e.stopPropagation();
             
-            // タッチイベントの重複を防ぐ
             const currentTime = Date.now();
             if (currentTime - lastTouchTime < 100) return;
             lastTouchTime = currentTime;
@@ -417,31 +762,28 @@
             marker.style.top = (rect.top + rect.height / 2 - 20) + 'px';
             document.getElementById('gameContainer').appendChild(marker);
             
-            // パッチを削除
             patch.remove();
             clearedPatches++;
-            score++; // 1点加算
+            score++;
             updateScore();
             
-            // マーカーをアニメーション後に削除
             setTimeout(() => marker.remove(), 500);
             
-            // 待機中のパッチがあれば配置を試みる
             if (pendingPatches.length > 0) {
                 setTimeout(() => tryPlacePendingPatches(), 100);
             }
             
-            // 全てクリアしたかチェック
             if (clearedPatches === 10) {
                 perfectClear = true;
                 nextStage();
             }
         }
 
+        // 背景クリック処理
         function handleBackgroundClick(e) {
             if (e.target.classList.contains('gabor-patch')) return;
+            if (e.target.id === 'menuToggle' || e.target.closest('.header')) return;
             
-            // タッチイベントの重複を防ぐ
             const currentTime = Date.now();
             if (currentTime - lastTouchTime < 100) return;
             lastTouchTime = currentTime;
@@ -450,33 +792,33 @@
             const marker = document.createElement('div');
             marker.className = 'hit-marker miss';
             marker.textContent = '×';
-            marker.style.left = (e.clientX - 20) + 'px';
-            marker.style.top = (e.clientY - 20) + 'px';
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            marker.style.left = (clientX - 20) + 'px';
+            marker.style.top = (clientY - 20) + 'px';
             document.getElementById('gameContainer').appendChild(marker);
             
-            // 1点減点
             score = Math.max(0, score - 1);
             updateScore();
             
-            // マーカーをアニメーション後に削除
             setTimeout(() => marker.remove(), 500);
         }
 
-        let pendingPatches = []; // 配置待ちのパッチ情報
-        
+        // パッチ生成
         function generatePatches() {
             const gameArea = document.getElementById('gameArea');
             const types = Object.values(PATCH_TYPES);
             const sizeRange = calculatePatchSize();
-            const placedPatches = []; // 配置済みパッチの位置を記録
-            pendingPatches = []; // 配置待ちパッチをリセット
+            const placedPatches = [];
+            pendingPatches = [];
             
             for (let i = 0; i < 10; i++) {
                 const size = Math.random() * (sizeRange.max - sizeRange.min) + sizeRange.min;
                 const contrast = baseContrast * (Math.random() * 0.3 + 0.7);
                 const type = types[Math.floor(Math.random() * types.length)];
                 
-                // 重ならない位置を探す
                 let x, y;
                 let attempts = 0;
                 const maxAttempts = 50;
@@ -494,25 +836,23 @@
                 } while (attempts < maxAttempts);
                 
                 if (placed) {
-                    // 配置可能な場合は即座に配置
                     placedPatches.push({ x, y, size });
                     const patch = createGaborPatch(i, x, y, size, contrast, type);
                     gameArea.appendChild(patch);
                     patches.push(patch);
                 } else {
-                    // 配置できない場合は待機リストに追加
                     pendingPatches.push({ id: i, size, contrast, type });
                 }
             }
         }
-        
+
+        // 待機パッチ配置試行
         function tryPlacePendingPatches() {
             if (pendingPatches.length === 0) return;
             
             const gameArea = document.getElementById('gameArea');
             const placedPatches = [];
             
-            // 現在配置されているパッチの位置を取得
             document.querySelectorAll('.gabor-patch').forEach(patch => {
                 const rect = patch.getBoundingClientRect();
                 placedPatches.push({
@@ -522,7 +862,6 @@
                 });
             });
             
-            // 待機中のパッチを配置試行
             const stillPending = [];
             
             for (const pending of pendingPatches) {
@@ -548,7 +887,6 @@
                     gameArea.appendChild(patch);
                     patches.push(patch);
                     
-                    // 点滅中の場合は新しいパッチにも点滅を適用
                     if (timeLeft <= 10) {
                         patch.classList.add('blinking');
                     }
@@ -559,16 +897,15 @@
             
             pendingPatches = stillPending;
         }
-        
+
+        // 重なりチェック
         function isOverlapping(x, y, size, placedPatches) {
-            const margin = 10; // パッチ間の最小マージン
+            const margin = 10;
             
             for (const placed of placedPatches) {
                 const dx = x - placed.x;
                 const dy = y - placed.y;
-                const minDistance = (size + placed.size) / 2 + margin;
                 
-                // 矩形の重なりをチェック
                 if (Math.abs(dx) < size / 2 + placed.size / 2 + margin &&
                     Math.abs(dy) < size / 2 + placed.size / 2 + margin) {
                     return true;
@@ -578,6 +915,7 @@
             return false;
         }
 
+        // パッチクリア
         function clearPatches() {
             patches.forEach(patch => {
                 if (patch.parentNode) {
@@ -587,6 +925,7 @@
             patches = [];
         }
 
+        // タイマー開始
         function startTimer() {
             timeLeft = 60;
             updateTimer();
@@ -595,7 +934,6 @@
                 timeLeft--;
                 updateTimer();
                 
-                // 残り10秒（50秒経過）で点滅開始
                 if (timeLeft === 10) {
                     document.querySelectorAll('.gabor-patch').forEach(patch => {
                         patch.classList.add('blinking');
@@ -603,7 +941,6 @@
                 }
                 
                 if (timeLeft === 0) {
-                    // タイムアップ時に残っているパッチに×を表示
                     document.querySelectorAll('.gabor-patch').forEach(patch => {
                         const rect = patch.getBoundingClientRect();
                         const marker = document.createElement('div');
@@ -613,11 +950,9 @@
                         marker.style.top = (rect.top + rect.height / 2 - 20) + 'px';
                         document.getElementById('gameContainer').appendChild(marker);
                         
-                        // マーカーは1秒後に削除
                         setTimeout(() => marker.remove(), 1000);
                     });
                     
-                    // 1秒待ってから次のステージへ
                     setTimeout(() => {
                         nextStage();
                     }, 1000);
@@ -625,6 +960,7 @@
             }, 1000);
         }
 
+        // タイマー停止
         function stopTimer() {
             if (timer) {
                 clearInterval(timer);
@@ -632,6 +968,7 @@
             }
         }
 
+        // UI更新
         function updateTimer() {
             document.getElementById('timer').textContent = timeLeft;
         }
@@ -644,11 +981,11 @@
             document.getElementById('stage').textContent = stage;
         }
 
+        // 次のステージ
         function nextStage() {
             stopTimer();
             clearPatches();
             
-            // 完全クリアした場合、次のステージでコントラストを下げる
             if (perfectClear) {
                 baseContrast *= 0.9;
             }
@@ -659,7 +996,7 @@
             if (stage < 10) {
                 stage++;
                 updateStage();
-                setBackgroundColor(); // 新しいステージで背景色を変更
+                setBackgroundColor();
                 generatePatches();
                 startTimer();
             } else {
@@ -667,10 +1004,11 @@
             }
         }
 
+        // ゲーム開始
         function startGame() {
             document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('header').classList.add('hide');
             
-            // タッチデバイスの場合はtouchstartのみ、それ以外はclickのみを使用
             const isTouchDevice = 'ontouchstart' in window;
             if (isTouchDevice) {
                 document.getElementById('gameArea').addEventListener('touchstart', handleBackgroundClick, { passive: false });
@@ -690,19 +1028,65 @@
             startTimer();
         }
 
+        // ゲーム終了
         function endGame() {
             document.getElementById('finalScore').textContent = score;
+            
+            let message = "";
+            if (score >= 90) {
+                message = "素晴らしい！視覚認識能力が非常に高いです！";
+            } else if (score >= 70) {
+                message = "とても良い結果です！継続的なトレーニングで更に向上します。";
+            } else if (score >= 50) {
+                message = "良い成績です！毎日の練習で視力改善が期待できます。";
+            } else {
+                message = "トレーニングを続けることで視覚能力が向上します。";
+            }
+            
+            document.getElementById('resultMessage').textContent = message;
             document.getElementById('endScreen').style.display = 'flex';
         }
 
+        // ゲームリセット
         function resetGame() {
             document.getElementById('endScreen').style.display = 'none';
             document.getElementById('startScreen').style.display = 'flex';
             clearPatches();
             stopTimer();
-            // 背景色を元に戻す
             document.getElementById('gameContainer').style.backgroundColor = '#808080';
         }
+
+        // Service Worker登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+
+        // アドレスバーを隠す
+        window.addEventListener('scroll', () => {
+            if (window.scrollY < 1) {
+                setTimeout(() => {
+                    window.scrollTo(0, 1);
+                }, 0);
+            }
+        });
+
+        // 横スクロール防止
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // ビューポート固定
+        window.addEventListener('scroll', () => {
+            if (window.scrollX > 0) {
+                window.scrollTo(0, window.scrollY);
+            }
+        });
     </script>
 </body>
 </html>
