@@ -1,92 +1,92 @@
 {
-  "name": "ガボールパッチ視力回復トレーニング",
-  "short_name": "ガボールパッチ",
-  "description": "視覚野のコントラスト感度を向上させる視力回復トレーニングアプリ",
-  "start_url": "./",
-  "display": "fullscreen",
-  "orientation": "any",
-  "background_color": "#ffffff",
-  "theme_color": "#4CAF50",
-  "scope": "./",
-  "icons": [
-    {
-      "src": "FNT512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "120x120",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "FNT512.png",
-      "sizes": "48x48",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["medical", "health", "games", "education"],
-  "lang": "ja",
-  "dir": "ltr",
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "shortcuts": [
-    {
-      "name": "トレーニング開始",
-      "short_name": "開始",
-      "description": "ガボールパッチトレーニングを開始",
-      "url": "./",
-      "icons": [
+    "name": "ガボールパッチ視力回復トレーニング",
+    "short_name": "ガボールパッチ",
+    "description": "視覚野のコントラスト感度を向上させ、視力回復を促進する神経科学に基づいたトレーニングアプリ",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "display_override": ["standalone", "fullscreen"],
+    "orientation": "portrait",
+    "background_color": "#808080",
+    "theme_color": "#4CAF50",
+    "categories": ["health", "medical", "education"],
+    "lang": "ja",
+    "dir": "ltr",
+    "icons": [
         {
-          "src": "FNT512.png",
-          "sizes": "96x96"
+            "src": "FNT512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "FNT512.png",
+            "sizes": "48x48",
+            "type": "image/png",
+            "purpose": "any"
         }
-      ]
+    ],
+    "screenshots": [
+        {
+            "src": "FNT512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "ガボールパッチ視力回復トレーニング"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "トレーニング開始",
+            "short_name": "開始",
+            "description": "視力回復トレーニングを開始する",
+            "url": "./index.html",
+            "icons": [
+                {
+                    "src": "FNT512.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ],
+    "prefer_related_applications": false,
+    "launch_handler": {
+        "client_mode": "navigate-existing"
     }
-  ]
 }
