@@ -1,169 +1,198 @@
-// Service Worker for Gabor Patch Training App
-const CACHE_NAME = 'gabor-patch-v1.0';
-const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './FNT512.png',
-  './FNT512-transparent.png'
+// Service Worker for ガボールパッチ視力回復トレーニング
+const CACHE_NAME = 'gabor-patch-v1.0.0';
+const CACHE_VERSION = '1.0.0';
+
+// キャッシュするファイルリスト
+const ASSETS_TO_CACHE = [
+    './',
+    './index.html',
+    './manifest.json',
+    './FNT512.png',
+    './FNT512-transparent.png'
 ];
 
-// インストールイベント
+// インストール時
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => self.skipWaiting())
-  );
-});
-
-// アクティベートイベント
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// フェッチイベント - オフライン対応
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // キャッシュがあればそれを返す
-        if (response) {
-          return response;
-        }
-        
-        // キャッシュがない場合はネットワークから取得
-        return fetch(event.request).then((response) => {
-          // 有効なレスポンスでない場合は返す
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // レスポンスをクローンしてキャッシュに保存
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
-        });
-      })
-      .catch(() => {
-        // オフライン時のフォールバック
-        return new Response('オフラインです。インターネット接続を確認してください。', {
-          status: 503,
-          statusText: 'Service Unavailable',
-          headers: new Headers({
-            'Content-Type': 'text/plain; charset=utf-8'
-          })
-        });
-      })
-  );
-});
-
-// バックグラウンド同期
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'update-cache') {
-    event.waitUntil(updateCache());
-  }
-});
-
-// キャッシュ更新
-async function updateCache() {
-  const cache = await caches.open(CACHE_NAME);
-  const requests = await cache.keys();
-  
-  const updatePromises = requests.map(async (request) => {
-    try {
-      const response = await fetch(request);
-      if (response && response.status === 200) {
-        await cache.put(request, response);
-      }
-    } catch (error) {
-      console.log('Cache update failed for:', request.url);
-    }
-  });
-  
-  return Promise.all(updatePromises);
-}
-
-// プッシュ通知（将来の機能拡張用）
-self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data ? event.data.text() : 'トレーニングの時間です！',
-    icon: './FNT512.png',
-    badge: './FNT512.png',
-    vibrate: [200, 100, 200],
-    tag: 'training-reminder'
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification('ガボールパッチトレーニング', options)
-  );
-});
-
-// 通知クリック
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  event.waitUntil(
-    clients.openWindow('./')
-  );
-});
-
-// バージョン管理
-const APP_VERSION = '1.0.0';
-
-// 定期的な更新チェック（24時間ごと）
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CHECK_UPDATE') {
-    checkForUpdates();
-  }
-});
-
-async function checkForUpdates() {
-  try {
-    const response = await fetch('./version.json');
-    const data = await response.json();
+    console.log('[Service Worker] Installing version:', CACHE_VERSION);
     
-    if (data.version !== APP_VERSION) {
-      // 新しいバージョンが利用可能
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({
-            type: 'UPDATE_AVAILABLE',
-            version: data.version
-          });
-        });
-      });
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('[Service Worker] Caching app shell');
+                // 各ファイルを個別にキャッシュ（エラーがあっても続行）
+                return Promise.allSettled(
+                    ASSETS_TO_CACHE.map(url => 
+                        cache.add(url).catch(err => {
+                            console.warn('[Service Worker] Failed to cache:', url, err);
+                        })
+                    )
+                );
+            })
+            .then(() => {
+                console.log('[Service Worker] Installation complete');
+                return self.skipWaiting();
+            })
+            .catch((err) => {
+                console.error('[Service Worker] Installation failed:', err);
+            })
+    );
+});
+
+// アクティベート時（古いキャッシュの削除）
+self.addEventListener('activate', (event) => {
+    console.log('[Service Worker] Activating version:', CACHE_VERSION);
+    
+    event.waitUntil(
+        caches.keys()
+            .then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((cacheName) => {
+                        if (cacheName !== CACHE_NAME) {
+                            console.log('[Service Worker] Deleting old cache:', cacheName);
+                            return caches.delete(cacheName);
+                        }
+                    })
+                );
+            })
+            .then(() => {
+                console.log('[Service Worker] Activation complete');
+                return self.clients.claim();
+            })
+    );
+});
+
+// フェッチイベント（リクエスト時）
+self.addEventListener('fetch', (event) => {
+    // 同一オリジンのリクエストのみ処理
+    if (!event.request.url.startsWith(self.location.origin)) {
+        return;
     }
-  } catch (error) {
-    console.log('Update check failed:', error);
-  }
-}
 
-// オフライン検出
-self.addEventListener('online', () => {
-  console.log('Online status detected');
-  updateCache();
+    // GETリクエストのみ処理
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    event.respondWith(
+        caches.match(event.request)
+            .then((cachedResponse) => {
+                // キャッシュがあればそれを返す
+                if (cachedResponse) {
+                    // バックグラウンドで最新版を取得（Stale-While-Revalidate）
+                    event.waitUntil(
+                        fetch(event.request)
+                            .then((networkResponse) => {
+                                if (networkResponse && networkResponse.status === 200) {
+                                    caches.open(CACHE_NAME)
+                                        .then((cache) => {
+                                            cache.put(event.request, networkResponse.clone());
+                                        });
+                                }
+                            })
+                            .catch(() => {
+                                // ネットワークエラーは無視
+                            })
+                    );
+                    return cachedResponse;
+                }
+
+                // キャッシュがなければネットワークから取得
+                return fetch(event.request)
+                    .then((networkResponse) => {
+                        // 有効なレスポンスのみキャッシュ
+                        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                            return networkResponse;
+                        }
+
+                        const responseToCache = networkResponse.clone();
+                        caches.open(CACHE_NAME)
+                            .then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            });
+
+                        return networkResponse;
+                    })
+                    .catch(() => {
+                        // オフライン時のフォールバック
+                        if (event.request.destination === 'document') {
+                            return caches.match('./index.html');
+                        }
+                        return new Response('Offline', {
+                            status: 503,
+                            statusText: 'Service Unavailable'
+                        });
+                    });
+            })
+    );
 });
 
-self.addEventListener('offline', () => {
-  console.log('Offline status detected');
+// メッセージ受信時
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        console.log('[Service Worker] Skip waiting requested');
+        self.skipWaiting();
+    }
+    
+    if (event.data && event.data.type === 'GET_VERSION') {
+        event.ports[0].postMessage({ version: CACHE_VERSION });
+    }
 });
+
+// プッシュ通知（将来の拡張用）
+self.addEventListener('push', (event) => {
+    if (event.data) {
+        const data = event.data.json();
+        const options = {
+            body: data.body || 'トレーニングの時間です！',
+            icon: './FNT512.png',
+            badge: './FNT512.png',
+            vibrate: [100, 50, 100],
+            data: {
+                url: data.url || './'
+            }
+        };
+
+        event.waitUntil(
+            self.registration.showNotification(data.title || 'ガボールパッチ', options)
+        );
+    }
+});
+
+// 通知クリック時
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((clientList) => {
+                // 既存のウィンドウがあればフォーカス
+                for (const client of clientList) {
+                    if (client.url.includes('gabor-patch') && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // なければ新しいウィンドウを開く
+                if (clients.openWindow) {
+                    return clients.openWindow(event.notification.data.url || './');
+                }
+            })
+    );
+});
+
+// バックグラウンド同期（将来の拡張用）
+self.addEventListener('sync', (event) => {
+    if (event.tag === 'sync-scores') {
+        console.log('[Service Worker] Background sync triggered');
+        // スコアの同期処理をここに追加
+    }
+});
+
+// 定期的なバックグラウンド同期（将来の拡張用）
+self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'update-check') {
+        console.log('[Service Worker] Periodic sync triggered');
+        // 定期的な更新チェック処理をここに追加
+    }
+});
+
+console.log('[Service Worker] Script loaded, version:', CACHE_VERSION);
